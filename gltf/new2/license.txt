@@ -1,0 +1,11 @@
+Model Information:
+* title:	CB Knight
+* source:	https://sketchfab.com/3d-models/cb-knight-c06f1a5cc5ed4c31805ed67af0efc6e6
+* author:	3D Share (https://sketchfab.com/3dsharesg)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "CB Knight" (https://sketchfab.com/3d-models/cb-knight-c06f1a5cc5ed4c31805ed67af0efc6e6) by 3D Share (https://sketchfab.com/3dsharesg) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
