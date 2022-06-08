@@ -9,6 +9,7 @@ import (
 	"github.com/g3n/engine/app"
 	"github.com/g3n/engine/camera"
 	"github.com/g3n/engine/core"
+	"github.com/g3n/engine/experimental/collision"
 	"github.com/g3n/engine/gls"
 	"github.com/g3n/engine/graphic"
 	"github.com/g3n/engine/gui"
@@ -29,6 +30,8 @@ const (
 	CMD_LAST
 )
 
+var offset math32.Vector3
+
 //游戏类
 type Game struct {
 	cam        *camera.Camera
@@ -40,6 +43,7 @@ type Game struct {
 	stopAnm    bool
 	man        *core.Node
 	commad     [CMD_LAST]bool
+	rc         *collision.Raycaster
 }
 
 //游戏类实例化
@@ -48,17 +52,12 @@ func New() *Game {
 
 	//创建相机
 	cam := camera.New(1)
-
-	cam.SetRotation(-0.88627297, -0.8062192, -0.7240288)
-	cam.SetPosition(-3.0305357, 2.4144433, 1.8666264)
-	//cam.RotateY()
-
-	camera.NewOrbitControl(cam)
-
-	// f.SetEnabled(camera.OrbitAll)
-	// f.MaxPolarAngle = 2 * math32.Pi / 3
-	// f.MinDistance = 5
-	// f.MaxDistance = 15
+	cam.SetQuaternion(-0.2640148, -0.4865232, -0.15705174, 0.817879)
+	cam.SetPosition(-2.92947, 2.9979727, 1.4749823)
+	fmt.Println(cam.Position())
+	//camera.NewOrbitControl(cam)
+	offset.Add(math32.NewVector3(0, 0, 0))
+	offset.Sub(math32.NewVector3(2.92947, -2.9979727, -1.4749823))
 	//创建场景
 	scene := core.NewNode()
 	scene.Add(cam)
@@ -266,29 +265,62 @@ func (g *Game) GUI() {
 	//按键监听
 	g.app.Subscribe(window.OnKeyDown, g.onKey)
 	g.app.Subscribe(window.OnKeyUp, g.onKey)
+	//
+	// Creates the raycaster
+	g.rc = collision.NewRaycaster(&math32.Vector3{}, &math32.Vector3{})
+	g.rc.LinePrecision = 0.05
+	g.rc.PointPrecision = 0.05
+	g.app.Subscribe(window.OnMouseDown, g.onMouse)
+}
+func (g *Game) onMouse(evname string, ev interface{}) {
+	// Convert mouse coordinates to normalized device coordinates
+	mev := ev.(*window.MouseEvent)
+	width, height := g.app.GetSize()
+	x := 2*(mev.Xpos/float32(width)) - 1
+	y := -2*(mev.Ypos/float32(height)) + 1
+
+	// Set the raycaster from the current camera and mouse coordinates
+	g.rc.SetFromCamera(g.cam, x, y)
+	//fmt.Printf("rc:%+v\n", t.rc.Ray)
+
+	// Checks intersection with all objects in the scene
+	intersects := g.rc.IntersectObjects(g.Scence.Children(), true)
+	//fmt.Printf("intersects:%+v\n", intersects)
+	if len(intersects) == 0 {
+		return
+	}
+
+	// Get first intersection
+	obj := intersects[0].Object
+	// Convert INode to IGraphic
+	_, ok := obj.(graphic.IGraphic)
+	if !ok {
+		fmt.Println("Not graphic")
+		return
+	}
+	fmt.Println(obj.Position())
 }
 
 func (g *Game) update(renderer *renderer.Renderer, deltaTime time.Duration) {
 	g.frameRater.Start()
-	//fmt.Println(glfw.GetCurrentContext().GetCursorPos())
-
-	// fmt.Println(g.cam.GetNode().Rotation())
-	// fmt.Println(g.cam.GetNode().Position())
 
 	g.app.Gls().Clear(gls.DEPTH_BUFFER_BIT | gls.STENCIL_BUFFER_BIT | gls.COLOR_BUFFER_BIT)
 	//相机渲染
 	err := renderer.Render(g.Scence, g.cam)
+
 	if err != nil {
 		panic(err)
 	}
+	//控制角色
 	g.ControllerMan(deltaTime)
+	//
 	if g.man != nil {
-		m := g.man.Position()
-		g.cam.LookAt(&math32.Vector3{m.X, m.Y, m.Z}, &math32.Vector3{0, 1, 0})
-	} else {
-		g.cam.LookAt(&math32.Vector3{0, 0, 0}, &math32.Vector3{0, 1, 0})
+		manPos := g.man.Position()
+		var target math32.Vector3
+		target.Add(&manPos)
+		target.Add(&offset)
+		g.cam.SetPositionVec(&target)
 	}
-
 	//播放动画
 	if len(g.anims) > 0 && int(g.anmisindex) < len(g.anims) {
 		g.anims[g.anmisindex].Update(float32(deltaTime.Seconds()))
@@ -298,6 +330,7 @@ func (g *Game) update(renderer *renderer.Renderer, deltaTime time.Duration) {
 
 //控制角色
 func (g *Game) ControllerMan(deltaTime time.Duration) {
+
 	if g.commad[CMD_A] {
 		g.man.RotateY(0.2)
 	}
