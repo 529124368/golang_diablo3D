@@ -19,18 +19,18 @@ import (
 	"github.com/g3n/engine/renderer"
 	"github.com/g3n/engine/text"
 	"github.com/g3n/engine/util"
+	"github.com/g3n/engine/util/helper"
 	"github.com/g3n/engine/window"
 )
 
-const (
-	CMD_W = iota
-	CMD_S
-	CMD_A
-	CMD_D
-	CMD_LAST
-)
-
 var offset math32.Vector3
+
+//Play state
+const (
+	ATTACK = iota
+	IDLE
+	WALK
+)
 
 //游戏类
 type Game struct {
@@ -42,8 +42,9 @@ type Game struct {
 	Scence     *core.Node
 	stopAnm    bool
 	man        *core.Node
-	commad     [CMD_LAST]bool
 	rc         *collision.Raycaster
+	target     math32.Vector3
+	State      int
 }
 
 //游戏类实例化
@@ -63,12 +64,12 @@ func New() *Game {
 	scene.Add(cam)
 	//UI
 	gui.Manager().Set(scene)
-
 	g := &Game{
+		State:      IDLE,
 		Scence:     scene,
 		cam:        cam,
 		app:        appli,
-		frameRater: util.NewFrameRater(30),
+		frameRater: util.NewFrameRater(60),
 		anims:      make([]*animation.Animation, 0, 10),
 	}
 	//UI 加载
@@ -78,8 +79,7 @@ func New() *Game {
 	//背景色
 	g.app.Gls().ClearColor(0.5, 0.5, 0.5, 1.0)
 	//显示debug信息
-	g.Debug()
-
+	//g.Debug()
 	return g
 }
 
@@ -132,10 +132,8 @@ func (g *Game) DelPlayerModel() {
 
 //加载模型
 func (g *Game) LoadScence() {
-
 	//加载模型和动画
 	g.newPlayerModel("asset/gltf/player/ba.gltf")
-
 	//加载
 	g.newModel("asset/gltf/player/am.gltf", 0)
 
@@ -174,14 +172,13 @@ func (g *Game) LoadScence() {
 func (g *Game) Debug() {
 	// // Create and add an axis helper to the scene
 	//辅助显示
-	// g.Scence.Add(helper.NewAxes(0.5))
-	// g.Scence.Add(helper.NewGrid(100, 1, math32.NewColor("green")))
+	g.Scence.Add(helper.NewAxes(0.5))
+	g.Scence.Add(helper.NewGrid(100, 1, math32.NewColor("green")))
 	//
 }
 
 //UI
 func (g *Game) GUI() {
-
 	selectF := tools.NewFileSelectButton("./", "Select File", 400, 300)
 	selectF.SetPosition(200, 10)
 	selectF.Subscribe("OnSelect", func(evname string, ev interface{}) {
@@ -262,10 +259,6 @@ func (g *Game) GUI() {
 	b1.SetPosition(400, 141)
 	g.Scence.Add(b1)
 
-	//按键监听
-	g.app.Subscribe(window.OnKeyDown, g.onKey)
-	g.app.Subscribe(window.OnKeyUp, g.onKey)
-	//
 	// Creates the raycaster
 	g.rc = collision.NewRaycaster(&math32.Vector3{}, &math32.Vector3{})
 	g.rc.LinePrecision = 0.05
@@ -273,37 +266,30 @@ func (g *Game) GUI() {
 	g.app.Subscribe(window.OnMouseDown, g.onMouse)
 }
 func (g *Game) onMouse(evname string, ev interface{}) {
-	// Convert mouse coordinates to normalized device coordinates
 	mev := ev.(*window.MouseEvent)
-	width, height := g.app.GetSize()
-	x := 2*(mev.Xpos/float32(width)) - 1
-	y := -2*(mev.Ypos/float32(height)) + 1
+	if mev.Button == window.MouseButtonLeft {
+		width, height := g.app.GetSize()
+		x := 2*(mev.Xpos/float32(width)) - 1
+		y := -2*(mev.Ypos/float32(height)) + 1
 
-	// Set the raycaster from the current camera and mouse coordinates
-	g.rc.SetFromCamera(g.cam, x, y)
-	//fmt.Printf("rc:%+v\n", t.rc.Ray)
+		g.rc.SetFromCamera(g.cam, x, y)
 
-	// Checks intersection with all objects in the scene
-	intersects := g.rc.IntersectObjects(g.Scence.Children(), true)
-	//fmt.Printf("intersects:%+v\n", intersects)
-	if len(intersects) == 0 {
-		return
+		// Checks intersection with all objects in the scene
+		intersects := g.rc.IntersectObjects(g.Scence.Children(), true)
+		if len(intersects) == 0 {
+			return
+		}
+		g.State = WALK
+		// Get first intersection
+		g.target = intersects[0].Point
+	} else if mev.Button == window.MouseButtonRight {
+		g.State = ATTACK
 	}
 
-	// Get first intersection
-	obj := intersects[0].Object
-	// Convert INode to IGraphic
-	_, ok := obj.(graphic.IGraphic)
-	if !ok {
-		fmt.Println("Not graphic")
-		return
-	}
-	fmt.Println(obj.Position())
 }
 
 func (g *Game) update(renderer *renderer.Renderer, deltaTime time.Duration) {
 	g.frameRater.Start()
-
 	g.app.Gls().Clear(gls.DEPTH_BUFFER_BIT | gls.STENCIL_BUFFER_BIT | gls.COLOR_BUFFER_BIT)
 	//相机渲染
 	err := renderer.Render(g.Scence, g.cam)
@@ -311,8 +297,6 @@ func (g *Game) update(renderer *renderer.Renderer, deltaTime time.Duration) {
 	if err != nil {
 		panic(err)
 	}
-	//控制角色
-	g.ControllerMan(deltaTime)
 	//
 	if g.man != nil {
 		manPos := g.man.Position()
@@ -320,62 +304,44 @@ func (g *Game) update(renderer *renderer.Renderer, deltaTime time.Duration) {
 		target.Add(&manPos)
 		target.Add(&offset)
 		g.cam.SetPositionVec(&target)
-	}
-	//播放动画
-	if len(g.anims) > 0 && int(g.anmisindex) < len(g.anims) {
-		g.anims[g.anmisindex].Update(float32(deltaTime.Seconds()))
+		//控制角色
+		g.ControllerMan(deltaTime)
+		//状态机
+		g.PlayAnimation(deltaTime)
 	}
 	g.frameRater.Wait()
 }
 
 //控制角色
 func (g *Game) ControllerMan(deltaTime time.Duration) {
-
-	if g.commad[CMD_A] {
-		g.man.RotateY(0.2)
-	}
-	if g.commad[CMD_D] {
-		g.man.RotateY(-0.2)
-	}
-	if g.commad[CMD_W] || g.commad[CMD_S] {
-		// Calculates the distance to move
+	manPos := g.man.Position()
+	dis := manPos.DistanceTo(&g.target)
+	//move
+	if dis > 0.1 {
 		dist := 0.9 * float32(deltaTime.Seconds())
 		// Get direction
-		var quat math32.Quaternion
-		g.man.WorldQuaternion(&quat)
-		direction := math32.Vector3{X: 1, Y: 0, Z: 0}
-		direction.ApplyQuaternion(&quat)
+		direction := g.target
+		direction = *direction.Sub(&manPos)
 		direction.Normalize()
 		direction.MultiplyScalar(dist)
-		if g.commad[CMD_S] {
-			direction.Negate()
-		}
 		// Get world position
 		var position math32.Vector3
 		g.man.WorldPosition(&position)
 		position.Add(&direction)
 		g.man.SetPositionVec(&position)
+		//
+		g.man.LookAt(math32.NewVector3(g.target.X, g.man.Position().Y, g.target.Z), math32.NewVector3(0, 1, 0))
+		g.man.RotateY(1.5)
+	} else if g.State != ATTACK {
+		g.State = IDLE
 	}
 }
 
-// Process key events
-func (g *Game) onKey(evname string, ev interface{}) {
-	var state bool
-	if evname == window.OnKeyDown {
-		state = true
-	} else {
-		state = false
-	}
-	kev := ev.(*window.KeyEvent)
-	switch kev.Key {
-	case window.KeyW:
-		g.commad[CMD_W] = state
-	case window.KeyS:
-		g.commad[CMD_S] = state
-	case window.KeyA:
-		g.commad[CMD_A] = state
-	case window.KeyD:
-		g.commad[CMD_D] = state
+//状态机
+func (g *Game) PlayAnimation(deltaTime time.Duration) {
+	//播放动画
+	if len(g.anims) > 0 && int(g.anmisindex) < len(g.anims) {
+		g.anims[g.State].Update(float32(deltaTime.Seconds()))
 	}
 }
 
