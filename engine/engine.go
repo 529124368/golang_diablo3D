@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"runtime"
 	"time"
 
 	"github.com/g3n/engine/animation"
@@ -17,10 +18,8 @@ import (
 	"github.com/g3n/engine/loader/gltf"
 	"github.com/g3n/engine/math32"
 	"github.com/g3n/engine/renderer"
-	"github.com/g3n/engine/text"
 	"github.com/g3n/engine/util"
 	"github.com/g3n/engine/util/helper"
-	"github.com/g3n/engine/window"
 )
 
 var offset math32.Vector3
@@ -45,11 +44,14 @@ type Game struct {
 	target     math32.Vector3
 	State      int
 	audio      *Muscic
+	ui         *UI
 }
 
 //游戏类实例化
 func New() *Game {
+
 	appli := app.App(900, 550, "golang game")
+	//glfw.GetCurrentContext().SetSizeLimits(900, 550, 900, 550)
 	cursorIcon, _ := appli.CreateCursor("asset/UI/mouse.png", 0, 0)
 	appli.SetCursor(cursorIcon)
 	//创建相机
@@ -74,9 +76,13 @@ func New() *Game {
 		anims:      make([]*animation.Animation, 0, 10),
 	}
 	//UI 加载
-	g.GUI()
+	g.ui = NewUI(g)
+	g.ui.GUI()
 	//场景加载
-	g.LoadScence()
+	go func() {
+		g.LoadScence()
+		runtime.GC()
+	}()
 	//背景色
 	g.app.Gls().ClearColor(0.5, 0.5, 0.5, 1.0)
 	//音乐
@@ -189,118 +195,6 @@ func (g *Game) Debug() {
 	//
 }
 
-//UI
-func (g *Game) GUI() {
-	// selectF := tools.NewFileSelectButton("./", "Select File", 400, 300)
-	// selectF.SetPosition(200, 10)
-	// selectF.Subscribe("OnSelect", func(evname string, ev interface{}) {
-	// 	fpath := ev.(string)
-	// 	fmt.Println(fpath)
-	// 	g.DelPlayerModel()
-	// 	g.newPlayerModel(fpath)
-	// })
-	// g.Scence.Add(selectF)
-
-	//注册监听
-	onResize := func(evname string, ev interface{}) {
-		// Get framebuffer size and update viewport accordingly
-		width, height := g.app.GetSize()
-		g.app.Gls().Viewport(0, 0, int32(width), int32(height))
-		// Update the camera's aspect ratio
-		g.camera.SetAspect(float32(width) / float32(height))
-	}
-	g.app.Subscribe(window.OnWindowSize, onResize)
-	onResize("", nil)
-
-	//GUI
-	fonts, _ := text.NewFont("asset/font/DiabloLight.ttf")
-
-	// //停止动画按钮
-	// btn := gui.NewButton("stop")
-	// btn.Label.SetFont(fonts)
-	// btn.SetPosition(66, 141)
-	// btn.SetSize(40, 40)
-
-	// //监听
-	// btn.Subscribe(gui.OnClick, func(name string, ev interface{}) {
-	// 	g.stopAnm = !g.stopAnm
-	// 	g.anims[g.anmisindex].SetPaused(g.stopAnm)
-	// })
-	// g.Scence.Add(btn)
-
-	// //切换动画按钮
-	// btn1 := gui.NewButton("change 0")
-	// btn1.Label.SetFont(fonts)
-	// btn1.SetPosition(66, 191)
-	// btn1.SetSize(40, 40)
-
-	// //监听
-	// btn1.Subscribe(gui.OnClick, func(name string, ev interface{}) {
-	// 	g.anmisindex = 0
-	// })
-	// g.Scence.Add(btn1)
-
-	// //切换动画按钮
-	// btn2 := gui.NewButton("change 1")
-	// btn2.Label.SetFont(fonts)
-	// btn2.SetPosition(66, 241)
-	// btn2.SetSize(40, 40)
-
-	// //监听
-	// btn2.Subscribe(gui.OnClick, func(name string, ev interface{}) {
-	// 	g.anmisindex = 1
-	// })
-	// g.Scence.Add(btn2)
-
-	// //切换动画按钮
-	// btn3 := gui.NewButton("change 2")
-	// btn3.Label.SetFont(fonts)
-	// btn3.SetPosition(66, 291)
-	// btn3.SetSize(40, 40)
-
-	// //监听
-	// btn3.Subscribe(gui.OnClick, func(name string, ev interface{}) {
-	// 	g.anmisindex = 2
-	// })
-	// g.Scence.Add(btn3)
-
-	b1 := gui.NewLabel("diablo demo")
-	b1.SetFontSize(50)
-	b1.SetColor(&math32.Color{R: 1, G: 0, B: 0})
-	b1.SetFont(fonts)
-	b1.SetPosition(400, 0)
-	g.Scence.Add(b1)
-
-	// Creates the raycaster
-	g.rc = collision.NewRaycaster(&math32.Vector3{}, &math32.Vector3{})
-	g.rc.LinePrecision = 0.05
-	g.rc.PointPrecision = 0.05
-	g.app.Subscribe(window.OnMouseDown, g.onMouse)
-}
-func (g *Game) onMouse(evname string, ev interface{}) {
-	mev := ev.(*window.MouseEvent)
-	if mev.Button == window.MouseButtonLeft {
-		width, height := g.app.GetSize()
-		x := 2*(mev.Xpos/float32(width)) - 1
-		y := -2*(mev.Ypos/float32(height)) + 1
-
-		g.rc.SetFromCamera(g.camera, x, y)
-
-		// Checks intersection with all objects in the scene
-		intersects := g.rc.IntersectObjects(g.Scence.Children(), true)
-		if len(intersects) == 0 {
-			return
-		}
-		g.State = WALK
-		// Get first intersection
-		g.target = intersects[0].Point
-	} else if mev.Button == window.MouseButtonRight {
-		g.State = ATTACK
-		g.audio.skill.SetGain(20)
-		g.audio.skill.Play()
-	}
-}
-
 func (g *Game) update(renderer *renderer.Renderer, deltaTime time.Duration) {
 	g.frameRater.Start()
 	g.app.Gls().Clear(gls.DEPTH_BUFFER_BIT | gls.STENCIL_BUFFER_BIT | gls.COLOR_BUFFER_BIT)
@@ -322,6 +216,8 @@ func (g *Game) update(renderer *renderer.Renderer, deltaTime time.Duration) {
 		//状态机
 		g.PlayAnimation(deltaTime)
 	}
+	//
+	g.ui.Update()
 	g.frameRater.Wait()
 }
 
@@ -347,13 +243,12 @@ func (g *Game) ControllerMan(deltaTime time.Duration) {
 		d := direction
 		g.man.WorldDirection(&manDir)
 		g.man.RotateY(manDir.AngleTo(&d) - 1.5)
-
 		g.man.SetPositionVec(&position)
-		//
 		//g.man.LookAt(math32.NewVector3(g.target.X, g.man.Position().Y, g.target.Z), math32.NewVector3(0, 1, 0))
 		// g.man.RotateY(math.Pi / 2)
 	} else if g.State != ATTACK {
 		g.State = IDLE
+		g.man.SetPositionVec(&g.target)
 	}
 }
 
