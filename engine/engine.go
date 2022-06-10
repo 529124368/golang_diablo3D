@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"math"
 	"runtime"
 	"time"
 
@@ -60,7 +61,6 @@ func New() *Game {
 	cam.SetPosition(-2.92947, 2.9979727, 1.4749823)
 
 	//camera.NewOrbitControl(cam)
-	offset.Add(math32.NewVector3(0, 0, 0))
 	offset.Sub(math32.NewVector3(2.92947, -2.9979727, -1.4749823))
 	//创建场景
 	scene := core.NewNode()
@@ -153,10 +153,11 @@ func (g *Game) LoadScence() {
 	//加载模型和动画
 	g.newPlayerModel("asset/gltf/player/ba.gltf")
 	//加载
-	g.newModel("asset/gltf/player/am.gltf", 0)
+	//g.newModel("asset/gltf/player/am.gltf", 0)
 
 	//加载地图
 	g.newModel("asset/gltf/map/map.gltf", -0.85)
+	//g.newModel("asset/gltf/map/jiaotang.gltf", 0)
 
 	//加载灯光
 	//g.Scence.Add(light.NewAmbient(&math32.Color{R: 1.0, G: 1.0, B: 1.0}, 0.8))
@@ -188,7 +189,6 @@ func (g *Game) LoadScence() {
 
 //debug 显示
 func (g *Game) Debug() {
-	// // Create and add an axis helper to the scene
 	//辅助显示
 	g.Scence.Add(helper.NewAxes(0.5))
 	g.Scence.Add(helper.NewGrid(100, 1, math32.NewColor("green")))
@@ -208,7 +208,9 @@ func (g *Game) update(renderer *renderer.Renderer, deltaTime time.Duration) {
 	if g.man != nil {
 		manPos := g.man.Position()
 		var target math32.Vector3
-		target.Add(&manPos)
+		manCop := manPos
+		manCop.Y = 0
+		target.Add(&manCop)
 		target.Add(&offset)
 		g.camera.SetPositionVec(&target)
 		//控制角色
@@ -231,6 +233,12 @@ func (g *Game) ControllerMan(deltaTime time.Duration) {
 		// Get direction
 		direction := g.target
 		direction = *direction.Sub(&manPos)
+		//旋转
+		// var manDir math32.Vector3
+		// d := direction
+		// g.man.WorldDirection(&manDir)
+		// g.man.RotateY(manDir.AngleTo(&d) - math.Pi/2)
+
 		direction.Normalize()
 		direction.MultiplyScalar(dist)
 		// Get world position
@@ -238,14 +246,9 @@ func (g *Game) ControllerMan(deltaTime time.Duration) {
 		g.man.WorldPosition(&position)
 		position.Add(&direction)
 		position.Y = 0
-
-		var manDir math32.Vector3
-		d := direction
-		g.man.WorldDirection(&manDir)
-		g.man.RotateY(manDir.AngleTo(&d) - 1.5)
 		g.man.SetPositionVec(&position)
-		//g.man.LookAt(math32.NewVector3(g.target.X, g.man.Position().Y, g.target.Z), math32.NewVector3(0, 1, 0))
-		// g.man.RotateY(math.Pi / 2)
+		g.man.LookAt(math32.NewVector3(g.target.X, g.man.Position().Y, g.target.Z), math32.NewVector3(0, 1, 0))
+		g.man.RotateY(math.Pi / 2)
 	} else if g.State != ATTACK {
 		g.State = IDLE
 		g.man.SetPositionVec(&g.target)
