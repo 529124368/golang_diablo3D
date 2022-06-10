@@ -34,13 +34,12 @@ const (
 
 //游戏类
 type Game struct {
-	cam        *camera.Camera
+	camera     *camera.Camera
 	app        *app.Application
 	frameRater *util.FrameRater
 	anims      []*animation.Animation
 	anmisindex uint8
 	Scence     *core.Node
-	stopAnm    bool
 	man        *core.Node
 	rc         *collision.Raycaster
 	target     math32.Vector3
@@ -57,7 +56,7 @@ func New() *Game {
 	cam := camera.New(1)
 	cam.SetQuaternion(-0.2640148, -0.4865232, -0.15705174, 0.817879)
 	cam.SetPosition(-2.92947, 2.9979727, 1.4749823)
-	fmt.Println(cam.Position())
+
 	//camera.NewOrbitControl(cam)
 	offset.Add(math32.NewVector3(0, 0, 0))
 	offset.Sub(math32.NewVector3(2.92947, -2.9979727, -1.4749823))
@@ -69,9 +68,9 @@ func New() *Game {
 	g := &Game{
 		State:      IDLE,
 		Scence:     scene,
-		cam:        cam,
+		camera:     cam,
 		app:        appli,
-		frameRater: util.NewFrameRater(60),
+		frameRater: util.NewFrameRater(30),
 		anims:      make([]*animation.Animation, 0, 10),
 	}
 	//UI 加载
@@ -84,9 +83,9 @@ func New() *Game {
 	g.audio = NewMusic()
 	// Create audio listener and add it to the current camera
 	listener := audio.NewListener()
-	cdir := g.cam.Direction()
+	cdir := g.camera.Direction()
 	listener.SetDirectionVec(&cdir)
-	g.cam.Add(listener)
+	g.camera.Add(listener)
 	// Start the music!
 	g.audio.musicGame.SetGain(10)
 	g.audio.musicGame.Play()
@@ -110,6 +109,7 @@ func (g *Game) newPlayerModel(path string) {
 
 		g.man.SetScale(1, 1, 1)
 		g.man.SetPosition(0, 0, 0)
+
 		//加载动画
 		if len(model.Animations) > 0 {
 			for i := range model.Animations {
@@ -207,7 +207,7 @@ func (g *Game) GUI() {
 		width, height := g.app.GetSize()
 		g.app.Gls().Viewport(0, 0, int32(width), int32(height))
 		// Update the camera's aspect ratio
-		g.cam.SetAspect(float32(width) / float32(height))
+		g.camera.SetAspect(float32(width) / float32(height))
 	}
 	g.app.Subscribe(window.OnWindowSize, onResize)
 	onResize("", nil)
@@ -284,7 +284,7 @@ func (g *Game) onMouse(evname string, ev interface{}) {
 		x := 2*(mev.Xpos/float32(width)) - 1
 		y := -2*(mev.Ypos/float32(height)) + 1
 
-		g.rc.SetFromCamera(g.cam, x, y)
+		g.rc.SetFromCamera(g.camera, x, y)
 
 		// Checks intersection with all objects in the scene
 		intersects := g.rc.IntersectObjects(g.Scence.Children(), true)
@@ -299,14 +299,13 @@ func (g *Game) onMouse(evname string, ev interface{}) {
 		g.audio.skill.SetGain(20)
 		g.audio.skill.Play()
 	}
-
 }
 
 func (g *Game) update(renderer *renderer.Renderer, deltaTime time.Duration) {
 	g.frameRater.Start()
 	g.app.Gls().Clear(gls.DEPTH_BUFFER_BIT | gls.STENCIL_BUFFER_BIT | gls.COLOR_BUFFER_BIT)
 	//相机渲染
-	err := renderer.Render(g.Scence, g.cam)
+	err := renderer.Render(g.Scence, g.camera)
 
 	if err != nil {
 		panic(err)
@@ -317,7 +316,7 @@ func (g *Game) update(renderer *renderer.Renderer, deltaTime time.Duration) {
 		var target math32.Vector3
 		target.Add(&manPos)
 		target.Add(&offset)
-		g.cam.SetPositionVec(&target)
+		g.camera.SetPositionVec(&target)
 		//控制角色
 		g.ControllerMan(deltaTime)
 		//状态机
@@ -342,10 +341,17 @@ func (g *Game) ControllerMan(deltaTime time.Duration) {
 		var position math32.Vector3
 		g.man.WorldPosition(&position)
 		position.Add(&direction)
+		position.Y = 0
+
+		var manDir math32.Vector3
+		d := direction
+		g.man.WorldDirection(&manDir)
+		g.man.RotateY(manDir.AngleTo(&d) - 1.5)
+
 		g.man.SetPositionVec(&position)
 		//
-		g.man.LookAt(math32.NewVector3(g.target.X, g.man.Position().Y, g.target.Z), math32.NewVector3(0, 1, 0))
-		g.man.RotateY(1.5)
+		//g.man.LookAt(math32.NewVector3(g.target.X, g.man.Position().Y, g.target.Z), math32.NewVector3(0, 1, 0))
+		// g.man.RotateY(math.Pi / 2)
 	} else if g.State != ATTACK {
 		g.State = IDLE
 	}
