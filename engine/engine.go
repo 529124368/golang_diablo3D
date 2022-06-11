@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"runtime"
+	"test/config"
 	"time"
 
 	"github.com/g3n/engine/animation"
@@ -51,7 +52,7 @@ type Game struct {
 //游戏类实例化
 func New() *Game {
 
-	appli := app.App(900, 550, "golang game")
+	appli := app.App(config.DEFAULT_SCREEN_WIDTH, config.DEFAULT_SCREEN_HEIGHT, "golang game")
 	//glfw.GetCurrentContext().SetSizeLimits(900, 550, 900, 550)
 	cursorIcon, _ := appli.CreateCursor("asset/UI/mouse.png", 0, 0)
 	appli.SetCursor(cursorIcon)

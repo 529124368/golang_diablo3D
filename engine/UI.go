@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"test/config"
 	"time"
 
 	"github.com/g3n/engine/experimental/collision"
@@ -24,12 +25,8 @@ func NewUI(g *Game) *UI {
 func (u *UI) GUI() {
 	//右侧装备栏
 	rightPanel, _ := gui.NewImage("asset/UI/sidepanel_r.png")
-	rightPanel.SetPosition(900-730/4.5, 0)
-	rightPanel.SetSize(730/4.5, 2160/4.5)
 	u.engine.Scence.Add(rightPanel)
 	eq, _ := gui.NewImage("asset/UI/background.png")
-	eq.SetPosition(850-1162/4.5, 47)
-	eq.SetSize(1162/4.5, 1507/4.5)
 	u.engine.Scence.Add(eq)
 	//HP 动画
 	tex1, _ := texture.NewTexture2DFromImage("asset/UI/HP.png")
@@ -37,19 +34,14 @@ func (u *UI) GUI() {
 	anim1 := texture.NewAnimator(tex1, 46, 1)
 	anim1.SetDispTime(16666 * time.Microsecond)
 	u.anims = append(u.anims, anim1)
+	u.engine.Scence.Add(hp)
+
 	//MP 动画
 	tex1, _ = texture.NewTexture2DFromImage("asset/UI/MP.png")
 	MP := gui.NewImageFromTex(tex1)
 	anim2 := texture.NewAnimator(tex1, 46, 1)
 	anim2.SetDispTime(16666 * time.Microsecond)
 	u.anims = append(u.anims, anim2)
-	//HP 缩放比例
-	hpwd := 900 / 109.0
-	hpdd := 900 / 86.0
-	//MP 缩放比例
-	mpwd := 900 / 109.0
-	mpdd := 900 / 715.0
-	u.engine.Scence.Add(hp)
 	u.engine.Scence.Add(MP)
 
 	//UI
@@ -67,11 +59,16 @@ func (u *UI) GUI() {
 		UIPanle.SetSize(float32(width), float32(width)/6.8)
 		UIPanle.SetPosition(0, float32(height)-float32(width)/6.8)
 		//更新HP
-		hp.SetSize(float32(width)/float32(hpwd), float32(width)/float32(hpwd))
-		hp.SetPosition(float32(width)/float32(hpdd), float32(height)-float32(width)/float32(hpwd))
+		hp.SetSize(float32(width)/(float32(config.DEFAULT_SCREEN_WIDTH)/109.0), float32(width)/(float32(config.DEFAULT_SCREEN_WIDTH)/109.0))
+		hp.SetPosition(float32(width)/(float32(config.DEFAULT_SCREEN_WIDTH)/86.0), float32(height)-float32(width)/(float32(config.DEFAULT_SCREEN_WIDTH)/109.0))
 		//更新MP
-		MP.SetSize(float32(width)/float32(mpwd), float32(width)/float32(mpwd))
-		MP.SetPosition(float32(width)/float32(mpdd), float32(height)-float32(width)/float32(mpwd))
+		MP.SetSize(float32(width)/(float32(config.DEFAULT_SCREEN_WIDTH)/109.0), float32(width)/(float32(config.DEFAULT_SCREEN_WIDTH)/109.0))
+		MP.SetPosition(float32(width)/(float32(config.DEFAULT_SCREEN_WIDTH)/715.0), float32(height)-float32(width)/(float32(config.DEFAULT_SCREEN_WIDTH)/109.0))
+		//更新装备栏
+		rightPanel.SetPosition(float32(width)/(float32(config.DEFAULT_SCREEN_WIDTH)/717), 0)
+		rightPanel.SetSize(float32(width)/(float32(config.DEFAULT_SCREEN_WIDTH)/182), float32(height)/(float32(config.DEFAULT_SCREEN_HEIGHT)/540))
+		eq.SetPosition(float32(width)/(float32(config.DEFAULT_SCREEN_WIDTH)/549), float32(height)/(float32(config.DEFAULT_SCREEN_HEIGHT)/52))
+		eq.SetSize(float32(width)/(float32(config.DEFAULT_SCREEN_WIDTH)/290), float32(height)/(float32(config.DEFAULT_SCREEN_HEIGHT)/376))
 	}
 	u.engine.app.Subscribe(window.OnWindowSize, onResize)
 	onResize("", nil)
@@ -87,6 +84,7 @@ func (u *UI) GUI() {
 	u.engine.rc.PointPrecision = 0.05
 	u.engine.app.Subscribe(window.OnMouseDown, u.onMouse)
 
+	//u.engine.app.Subscribe(, u.onMouse)
 	//fonts
 	//fonts, _ := text.NewFont("asset/font/DiabloLight.ttf")
 	// b1 := gui.NewLabel("diablo demo")
