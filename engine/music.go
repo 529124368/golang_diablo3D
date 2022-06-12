@@ -1,6 +1,10 @@
 package engine
 
 import (
+	"fmt"
+	"io/ioutil"
+	"os"
+
 	"github.com/g3n/engine/audio"
 	"github.com/g3n/engine/util/logger"
 )
@@ -11,6 +15,32 @@ type Muscic struct {
 	skill     *audio.Player
 }
 
+func init() {
+	go func() {
+		_, check := os.Stat("town1.wav")
+		if os.IsNotExist(check) {
+			datas, err := asset.ReadFile("asset/music/town1.wav")
+			if err != nil {
+				panic(err)
+			}
+			ioutil.WriteFile("town1.wav", datas, 0o600)
+		} else {
+			fmt.Println("has")
+		}
+	}()
+	go func() {
+		_, check := os.Stat("ba_skill.wav")
+		if os.IsNotExist(check) {
+			datas, err := asset.ReadFile("asset/music/ba_skill.wav")
+			if err != nil {
+				panic(err)
+			}
+			ioutil.WriteFile("ba_skill.wav", datas, 0o600)
+		}
+
+	}()
+
+}
 func NewMusic() *Muscic {
 	a := new(Muscic)
 	// Helper function to create player and handle errors
@@ -22,8 +52,8 @@ func NewMusic() *Muscic {
 		return p
 	}
 	// Music
-	a.musicGame = createPlayer("asset/music/town1.wav")
+	a.musicGame = createPlayer("town1.wav")
 	a.musicGame.SetLooping(true)
-	a.skill = createPlayer("asset/music/ba_skill.wav")
+	a.skill = createPlayer("ba_skill.wav")
 	return a
 }

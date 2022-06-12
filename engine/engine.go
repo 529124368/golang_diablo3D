@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"embed"
 	"fmt"
 	"math"
 	"runtime"
@@ -14,7 +15,6 @@ import (
 	"github.com/g3n/engine/core"
 	"github.com/g3n/engine/experimental/collision"
 	"github.com/g3n/engine/gls"
-	"github.com/g3n/engine/graphic"
 	"github.com/g3n/engine/gui"
 	"github.com/g3n/engine/light"
 	"github.com/g3n/engine/loader/gltf"
@@ -23,6 +23,9 @@ import (
 	"github.com/g3n/engine/util"
 	"github.com/g3n/engine/util/helper"
 )
+
+//go:embed asset
+var asset embed.FS
 
 var offset math32.Vector3
 
@@ -51,10 +54,9 @@ type Game struct {
 
 //游戏类实例化
 func New() *Game {
-
 	appli := app.App(config.DEFAULT_SCREEN_WIDTH, config.DEFAULT_SCREEN_HEIGHT, "golang game")
-	//glfw.GetCurrentContext().SetSizeLimits(900, 550, 900, 550)
-	cursorIcon, _ := appli.CreateCursor("asset/UI/mouse.png", 0, 0)
+	//glfw.GetCurrentContext().SetSizeLimits(config.DEFAULT_SCREEN_WIDTH, config.DEFAULT_SCREEN_HEIGHT, config.MAX_SCREEN_WIDTH, config.MAX_SCREEN_HEIGHT)
+	cursorIcon, _ := appli.CreateCursor("engine/engine/asset/UI/mouse.png", 0, 0)
 	appli.SetCursor(cursorIcon)
 	//创建相机
 	cam := camera.New(1)
@@ -85,7 +87,7 @@ func New() *Game {
 		runtime.GC()
 	}()
 	//背景色
-	g.app.Gls().ClearColor(0.5, 0.5, 0.5, 1.0)
+	g.app.Gls().ClearColor(1, 0, 0, 1.0)
 	//音乐
 	g.audio = NewMusic()
 	// Create audio listener and add it to the current camera
@@ -102,9 +104,9 @@ func New() *Game {
 }
 
 //动画模型加载
-func (g *Game) newPlayerModel(path string) {
+func (g *Game) newPlayerModel(datas []byte) {
 	go func() {
-		model, err := gltf.ParseJSON(path)
+		model, err := gltf.ParseJSONPlus(datas)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -130,9 +132,9 @@ func (g *Game) newPlayerModel(path string) {
 }
 
 //普通模型加载
-func (g *Game) newModel(path string, y float32) {
+func (g *Game) newModel(datas []byte, y float32) {
 	go func() {
-		model, err := gltf.ParseJSON(path)
+		model, err := gltf.ParseJSONPlus(datas)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -152,13 +154,12 @@ func (g *Game) DelPlayerModel() {
 //加载模型
 func (g *Game) LoadScence() {
 	//加载模型和动画
-	g.newPlayerModel("asset/gltf/player/ba.gltf")
-	//加载
-	//g.newModel("asset/gltf/player/am.gltf", 0)
+	datas, _ := asset.ReadFile("asset/gltf/player/ba.gltf")
+	g.newPlayerModel(datas)
 
 	//加载地图
-	g.newModel("asset/gltf/map/map.gltf", -0.85)
-	//g.newModel("asset/gltf/map/jiaotang.gltf", 0)
+	datas, _ = asset.ReadFile("asset/gltf/map/map.gltf")
+	g.newModel(datas, -0.85)
 
 	//加载灯光
 	//g.Scence.Add(light.NewAmbient(&math32.Color{R: 1.0, G: 1.0, B: 1.0}, 0.8))
@@ -179,13 +180,13 @@ func (g *Game) LoadScence() {
 	g.Scence.Add(pointLight1)
 
 	//skybox
-	skybox, err := graphic.NewSkybox(graphic.SkyboxData{
-		DirAndPrefix: "asset/skybox/", Extension: "jpg",
-		Suffixes: [6]string{"dark-s_nx", "dark-s_ny", "dark-s_nz", "dark-s_px", "dark-s_py", "dark-s_pz"}})
-	if err != nil {
-		panic(err)
-	}
-	g.Scence.Add(skybox)
+	// skybox, err := graphic.NewSkybox(graphic.SkyboxData{
+	// 	DirAndPrefix: "engine/asset/skybox/", Extension: "jpg",
+	// 	Suffixes: [6]string{"dark-s_nx", "dark-s_ny", "dark-s_nz", "dark-s_px", "dark-s_py", "dark-s_pz"}})
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// g.Scence.Add(skybox)
 }
 
 //debug 显示

@@ -11,42 +11,80 @@ import (
 	"github.com/g3n/engine/window"
 )
 
+var openBagSize float32
+
 type UI struct {
-	engine *Game
-	anims  []*texture.Animator
+	engine    *Game
+	anims     []*texture.Animator
+	mainPanel *gui.Panel
+	eqPanel   *gui.Panel
 }
 
 func NewUI(g *Game) *UI {
 	ui := new(UI)
 	ui.engine = g
+	ui.mainPanel = gui.NewPanel(0, 0)
+	ui.eqPanel = gui.NewPanel(0, 0)
+	// Show and enable demo panel
+	ui.mainPanel.Add(ui.eqPanel)
+	ui.eqPanel.SetVisible(false)
+	g.Scence.Add(ui.mainPanel)
 	return ui
 }
 
 func (u *UI) GUI() {
+
 	//右侧装备栏
-	rightPanel, _ := gui.NewImage("asset/UI/sidepanel_r.png")
-	u.engine.Scence.Add(rightPanel)
-	eq, _ := gui.NewImage("asset/UI/background.png")
-	u.engine.Scence.Add(eq)
+	datas, _ := asset.ReadFile("asset/UI/sidepanel_r.png")
+	rightPanel, _ := gui.NewImagePlus(datas)
+	u.eqPanel.Add(rightPanel)
+
+	datas, _ = asset.ReadFile("asset/UI/background.png")
+	eq, _ := gui.NewImagePlus(datas)
+	u.eqPanel.Add(eq)
+
+	datas, _ = asset.ReadFile("asset/UI/sidepanel_hinge_r.png")
+	rightClose, _ := gui.NewImagePlus(datas)
+	u.eqPanel.Add(rightClose)
+
 	//HP 动画
-	tex1, _ := texture.NewTexture2DFromImage("asset/UI/HP.png")
+	datas, _ = asset.ReadFile("asset/UI/HP.png")
+	tex1, _ := texture.NewTexture2DFromImagePlius(datas)
 	hp := gui.NewImageFromTex(tex1)
 	anim1 := texture.NewAnimator(tex1, 46, 1)
 	anim1.SetDispTime(16666 * time.Microsecond)
 	u.anims = append(u.anims, anim1)
-	u.engine.Scence.Add(hp)
+	u.mainPanel.Add(hp)
 
 	//MP 动画
-	tex1, _ = texture.NewTexture2DFromImage("asset/UI/MP.png")
+	datas, _ = asset.ReadFile("asset/UI/MP.png")
+	tex1, _ = texture.NewTexture2DFromImagePlius(datas)
 	MP := gui.NewImageFromTex(tex1)
 	anim2 := texture.NewAnimator(tex1, 46, 1)
 	anim2.SetDispTime(16666 * time.Microsecond)
 	u.anims = append(u.anims, anim2)
-	u.engine.Scence.Add(MP)
+	u.mainPanel.Add(MP)
 
 	//UI
-	UIPanle, _ := gui.NewImage("asset/UI/front_panel.png")
-	u.engine.Scence.Add(UIPanle)
+	datas, _ = asset.ReadFile("asset/UI/front_panel.png")
+	UIPanle, _ := gui.NewImagePlus(datas)
+	u.mainPanel.Add(UIPanle)
+
+	//按钮
+	datas, _ = asset.ReadFile("asset/UI/btn_normal.png")
+	openBag, _ := gui.NewImagePlus(datas)
+	openBag.Subscribe(window.OnMouseDown, func(s string, i interface{}) {
+		datas, _ = asset.ReadFile("asset/UI/btn_pressed.png")
+		openBag.SetImagePlus(datas)
+		openBag.SetSize(openBagSize, openBagSize)
+		u.eqPanel.SetVisible(!u.eqPanel.Visible())
+	})
+	openBag.Subscribe(window.OnMouseUp, func(s string, i interface{}) {
+		datas, _ = asset.ReadFile("asset/UI/btn_normal.png")
+		openBag.SetImagePlus(datas)
+		openBag.SetSize(openBagSize, openBagSize)
+	})
+	u.mainPanel.Add(openBag)
 
 	//窗体大小变化监听
 	onResize := func(evname string, ev interface{}) {
@@ -55,6 +93,9 @@ func (u *UI) GUI() {
 		u.engine.app.Gls().Viewport(0, 0, int32(width), int32(height))
 		// Update the camera's aspect ratio
 		u.engine.camera.SetAspect(float32(width) / float32(height))
+		//
+		u.mainPanel.SetSize(float32(width), float32(height))
+		u.eqPanel.SetSize(float32(width), float32(height))
 		//更新UI大小尺寸
 		UIPanle.SetSize(float32(width), float32(width)/6.8)
 		UIPanle.SetPosition(0, float32(height)-float32(width)/6.8)
@@ -69,14 +110,21 @@ func (u *UI) GUI() {
 		rightPanel.SetSize(float32(width)/(float32(config.DEFAULT_SCREEN_WIDTH)/182), float32(height)/(float32(config.DEFAULT_SCREEN_HEIGHT)/540))
 		eq.SetPosition(float32(width)/(float32(config.DEFAULT_SCREEN_WIDTH)/549), float32(height)/(float32(config.DEFAULT_SCREEN_HEIGHT)/52))
 		eq.SetSize(float32(width)/(float32(config.DEFAULT_SCREEN_WIDTH)/290), float32(height)/(float32(config.DEFAULT_SCREEN_HEIGHT)/376))
+		rightClose.SetPosition(float32(width)/(float32(config.DEFAULT_SCREEN_WIDTH)/817), float32(height)/(float32(config.DEFAULT_SCREEN_HEIGHT)/220))
+		rightClose.SetSize(float32(width)/(float32(config.DEFAULT_SCREEN_WIDTH)/83), float32(height)/(float32(config.DEFAULT_SCREEN_HEIGHT)/74))
+		//
+		openBag.SetPosition(float32(width)/(float32(config.DEFAULT_SCREEN_WIDTH)/435), float32(height)/(float32(config.DEFAULT_SCREEN_HEIGHT)/510))
+		openBagSize = float32(height) / (float32(config.DEFAULT_SCREEN_HEIGHT) / 40)
+		openBag.SetSize(openBagSize, openBagSize)
+
 	}
 	u.engine.app.Subscribe(window.OnWindowSize, onResize)
 	onResize("", nil)
 
-	logo, _ := gui.NewImage("asset/UI/logo.png")
-	logo.SetPosition(0, 0)
-	logo.SetSize(648/2.0, 570/2.0)
-	u.engine.Scence.Add(logo)
+	// logo, _ := gui.NewImage("engine/asset/UI/logo.png")
+	// logo.SetPosition(0, 0)
+	// logo.SetSize(648/2.0, 570/2.0)
+	// u.mainPanel.Add(logo)
 
 	// Creates the raycaster
 	u.engine.rc = collision.NewRaycaster(&math32.Vector3{}, &math32.Vector3{})
@@ -86,13 +134,13 @@ func (u *UI) GUI() {
 
 	//u.engine.app.Subscribe(, u.onMouse)
 	//fonts
-	//fonts, _ := text.NewFont("asset/font/DiabloLight.ttf")
+	//fonts, _ := text.NewFont("engine/asset/font/DiabloLight.ttf")
 	// b1 := gui.NewLabel("diablo demo")
 	// b1.SetFontSize(50)
 	// b1.SetColor(&math32.Color{R: 1, G: 0, B: 0})
 	// b1.SetFont(fonts)
 	// b1.SetPosition(400, 0)
-	// u.engine.Scence.Add(b1)
+	// u.mainPanel.Add(b1)
 
 	// selectF := tools.NewFileSelectButton("./", "Select File", 400, 300)
 	// selectF.SetPosition(200, 10)
