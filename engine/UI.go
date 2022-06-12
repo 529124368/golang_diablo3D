@@ -173,6 +173,16 @@ func (u *UI) onMouse(evname string, ev interface{}) {
 		u.engine.target = intersects[0].Point
 	} else if mev.Button == window.MouseButtonRight {
 		u.engine.State = ATTACK
+		u.engine.anims[u.engine.State].Reset()
+		u.engine.anims[u.engine.State].SetPaused(false)
+		//声音控制
+		u.engine.audio.skill.SetGain(20)
+		u.engine.audio.skill.Play()
+	} else if mev.Button == window.MouseButtonMiddle {
+		u.engine.State = JUMP
+		u.engine.anims[u.engine.State].Reset()
+		u.engine.anims[u.engine.State].SetPaused(false)
+		//声音控制
 		u.engine.audio.skill.SetGain(20)
 		u.engine.audio.skill.Play()
 	}

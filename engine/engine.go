@@ -33,6 +33,7 @@ var offset math32.Vector3
 const (
 	ATTACK = iota
 	IDLE
+	JUMP
 	WALK
 )
 
@@ -123,7 +124,9 @@ func (g *Game) newPlayerModel(datas []byte) {
 		if len(model.Animations) > 0 {
 			for i := range model.Animations {
 				anim, _ := model.LoadAnimation(i)
-				anim.SetLoop(true)
+				if i == IDLE || i == WALK {
+					anim.SetLoop(true)
+				}
 				g.anims = append(g.anims, anim)
 			}
 		}
@@ -215,10 +218,10 @@ func (g *Game) update(renderer *renderer.Renderer, deltaTime time.Duration) {
 		target.Add(&manCop)
 		target.Add(&offset)
 		g.camera.SetPositionVec(&target)
-		//控制角色
-		g.ControllerMan(deltaTime)
 		//状态机
 		g.PlayAnimation(deltaTime)
+		//控制角色
+		g.ControllerMan(deltaTime)
 	}
 	//
 	g.ui.Update()
@@ -251,7 +254,7 @@ func (g *Game) ControllerMan(deltaTime time.Duration) {
 		g.man.SetPositionVec(&position)
 		g.man.LookAt(math32.NewVector3(g.target.X, g.man.Position().Y, g.target.Z), math32.NewVector3(0, 1, 0))
 		g.man.RotateY(math.Pi / 2)
-	} else if g.State != ATTACK {
+	} else if g.State != ATTACK && g.State != JUMP {
 		g.State = IDLE
 		g.man.SetPositionVec(&g.target)
 	}
@@ -261,8 +264,26 @@ func (g *Game) ControllerMan(deltaTime time.Duration) {
 func (g *Game) PlayAnimation(deltaTime time.Duration) {
 	//播放动画
 	if len(g.anims) > 0 && int(g.anmisindex) < len(g.anims) {
-		if g.State == ATTACK {
+		if g.State == ATTACK || g.State == JUMP {
 			g.anims[g.State].SetSpeed(2)
+			if g.anims[g.State].Paused() {
+
+				if g.State == JUMP {
+					//位移
+					manCopy := g.man
+					manCopy.RotateY(math.Pi / 2)
+					var dir math32.Vector3
+					manCopy.WorldDirection(&dir)
+					dir.MultiplyScalar(1)
+					var position math32.Vector3
+					manCopy.WorldPosition(&position)
+					position.Add(&dir)
+					g.man.SetPositionVec(&position)
+					g.man.RotateY(-math.Pi / 2)
+					g.target = position
+				}
+				g.State = IDLE
+			}
 		}
 		g.anims[g.State].Update(float32(deltaTime.Seconds()))
 
