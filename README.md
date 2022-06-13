@@ -10,10 +10,10 @@ Game Demo : https://redhat54188.itch.io/diablo3d-demo
 Go 1.18+ is required. 
 need CGO
 
-# Windows
+### Windows
 the Windows build using the mingw-w64 
 
-# macOS
+### macOS
 Install the development files of OpenAL and Vorbis using Homebrew:
 
 brew install libvorbis openal-soft
