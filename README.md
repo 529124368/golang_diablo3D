@@ -1,4 +1,6 @@
-## golang_diablo3D
+## golang_diablo3D   
+
+powered by G3N -> https://github.com/g3n/engine
 
 Technical demonstration only, not for use with any commercial activities.
 
