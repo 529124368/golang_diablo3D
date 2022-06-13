@@ -6,6 +6,18 @@ Technical demonstration only, not for use with any commercial activities.
 
 Game Demo : https://redhat54188.itch.io/diablo3d-demo
 
+## Dependencies
+Go 1.18+ is required. 
+need CGO
+
+# Windows
+the Windows build using the mingw-w64 
+
+# macOS
+Install the development files of OpenAL and Vorbis using Homebrew:
+
+brew install libvorbis openal-soft
+
 ## How to run game
 
 go run main.go
