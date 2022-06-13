@@ -1,2 +1,3 @@
 # golang_diablo3D
-diablo3D demo
+
+Technical demonstration only, not for use with any commercial activities.
